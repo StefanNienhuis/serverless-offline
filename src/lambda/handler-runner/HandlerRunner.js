@@ -24,10 +24,25 @@ export default class HandlerRunner {
   }
 
   async #loadRunner() {
-    const { useDocker, useInProcess } = this.#options
+    const { useRIE, useDocker, useInProcess } = this.#options
     const { handler, runtime } = this.#funOptions
 
     log.debug(`Loading handler... (${handler})`)
+
+    if (useRIE) {
+      const { default: RIERunner } = await import('./rie-runner/index.js')
+
+      const rieOptions = {
+        portRangeString: this.#options.riePortRange,
+      }
+
+      return new RIERunner(
+        this.#funOptions,
+        this.#env,
+        rieOptions,
+        this.v3Utils,
+      )
+    }
 
     if (useDocker) {
       if (unsupportedDockerRuntimes.has(runtime)) {
