@@ -73,6 +73,14 @@ export default class RIERunner {
       })
     })
 
+    this.handlerProcess.stdout.on('data', (data) => {
+      if (this.log) {
+        this.log.info(`RIE: ${data.toString()}`)
+      } else {
+        console.log(`RIE: ${data.toString()}`)
+      }
+    })
+
     this.handlerProcess.stderr.on('data', (data) => {
       if (this.log) {
         this.log.info(`RIE: ${data.toString()}`)
