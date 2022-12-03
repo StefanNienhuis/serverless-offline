@@ -1,19 +1,25 @@
 import { relative, resolve } from 'path'
 import { spawn } from 'child_process'
-import extend from 'extend'
 import fetch from 'node-fetch'
+import process from 'node:process'
+import { log } from '@serverless/utils/log.js'
+import { splitHandlerPathAndName } from '../../../utils/index.js'
 
 const { stringify } = JSON
 const { cwd } = process
 
 export default class RIERunner {
   #env = null
+
   #port = null
+
   #riePort = null
+
   #ready = null
 
-  constructor(funOptions, env, options, v3Utils) {
-    const { handlerPath } = funOptions
+  constructor(funOptions, env, options) {
+    const { handler, codeDir } = funOptions
+    const [handlerName] = splitHandlerPathAndName(handler)
     const { portRangeString } = options
 
     this.#env = env
@@ -44,24 +50,17 @@ export default class RIERunner {
 
     this.#riePort = this.#port + 1
 
-    if (v3Utils) {
-      this.log = v3Utils.log
-      this.progress = v3Utils.progress
-      this.writeText = v3Utils.writeText
-      this.v3Utils = v3Utils
-    }
-
     this.handlerProcess = spawn(
       'aws-lambda-rie',
       [
-        resolve(relative(cwd(), handlerPath), 'bootstrap'),
+        resolve(relative(cwd(), codeDir), handlerName, 'bootstrap'),
         '--listen',
         `0.0.0.0:${this.#port}`,
         '--rapid-port',
         this.#riePort, // Dynamically allocated port
       ],
       {
-        env: extend(process.env, this.#env),
+        env: { ...process.env, ...this.#env },
         shell: true,
       },
     )
@@ -74,19 +73,11 @@ export default class RIERunner {
     })
 
     this.handlerProcess.stdout.on('data', (data) => {
-      if (this.log) {
-        this.log.info(`RIE: ${data.toString()}`)
-      } else {
-        console.log(`RIE: ${data.toString()}`)
-      }
+      log(`RIE: ${data.toString()}`)
     })
 
     this.handlerProcess.stderr.on('data', (data) => {
-      if (this.log) {
-        this.log.info(`RIE: ${data.toString()}`)
-      } else {
-        console.log(`RIE: ${data.toString()}`)
-      }
+      log(`RIE: ${data.toString()}`)
     })
   }
 
